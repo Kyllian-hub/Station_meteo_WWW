@@ -1,4 +1,4 @@
-## MAIN (à compléter)
+## MAIN (fini)
 ```mermaid
 flowchart TD
 
@@ -95,7 +95,7 @@ VER4 --> LOOP
 
 ```
 
-## Standart
+## Standart (fini)
 ```mermaid
 flowchart TD
 
@@ -180,7 +180,7 @@ COPY --> END([Fin])
 WRITE --> END
 ```
 
-## Maintenance
+## Maintenance (fini)
 ```mermaid
 flowchart TD
 
@@ -234,7 +234,7 @@ O5 --> END
 P5 --> END
 ```
 
-## Economique
+## Economique (fini)
 ```mermaid
 
 flowchart TD
@@ -320,7 +320,7 @@ COPY --> END([Fin])
 WRITE --> END
 ```
 
-## Verification (à compléter)
+## Verification (fini)
 ```mermaid
 flowchart TD
 
@@ -429,9 +429,76 @@ LED9 --> END
 OK --> END
 
 ```
+## Mode configuration (fini)
 
-## Mode configuration à refaire, nous devons revoir l'ensemble de l'architecture.
+```mermaid
+flowchart TD
 
+START[Mode Configuration Active]
+
+START --> LED1[LED Jaune ON continue]
+LED1 --> ACQ_OFF[Acquisition Capteurs Desactivee]
+ACQ_OFF --> UART[Attente Commandes UART]
+
+%% =====================
+%% VERIFICATION INACTIVITE
+%% =====================
+
+UART --> INACT{30 min sans activite ?}
+INACT -- Oui --> END[Sortie Mode Configuration]
+INACT -- Non --> C1{Commande LOG_INTERVALL ?}
+
+%% =====================
+%% COMMANDES SYSTEME
+%% =====================
+
+C1 -- Oui --> LOG[Modifier intervalle mesures]
+C1 -- Non --> C2{Commande FILE_MAX_SIZE ?}
+
+C2 -- Oui --> FILE[Modifier taille max fichier log]
+C2 -- Non --> C3{Commande RESET ?}
+
+C3 -- Oui --> RESET[Reinitialisation parametres par defaut]
+C3 -- Non --> C4{Commande VERSION ?}
+
+C4 -- Oui --> VERSION[Afficher version + numero lot]
+C4 -- Non --> C5{Commande TIMEOUT ?}
+
+%% =====================
+%% COMMANDE CAPTEUR (CONFIG SEULEMENT)
+%% =====================
+
+C5 -- Oui --> TIMEOUT[Modifier timeout acquisition]
+TIMEOUT --> UART
+
+C5 -- Non --> C7{Commande CLOCK ?}
+
+%% =====================
+%% CONFIGURATION RTC
+%% =====================
+
+C7 -- Oui --> CLOCK[Configurer heure]
+C7 -- Non --> C8{Commande DATE ?}
+
+C8 -- Oui --> DATE[Configurer date]
+C8 -- Non --> C9{Commande DAY ?}
+
+C9 -- Oui --> DAY[Configurer jour semaine]
+C9 -- Non --> UART
+
+%% =====================
+%% RETOUR MENU
+%% =====================
+
+LOG --> UART
+FILE --> UART
+RESET --> UART
+VERSION --> UART
+CLOCK --> UART
+DATE --> UART
+DAY --> UART
+
+```
 
 
 
