@@ -2,75 +2,97 @@
 ```mermaid
 flowchart TD
 
-%% =====================
-%% DEMARRAGE & CONFIG
-%% =====================
-
 START([Debut])
 
-START --> ASK0[Afficher : Appuyer bouton rouge pour config ?]
-ASK0 --> WAIT0[Attendre saisie bouton rouge]
-WAIT0 --> C0{BOUTONROUGE == 1 ?}
+START --> ASK0[Appuyer bouton rouge pour config]
+ASK0 --> WAIT0[Attendre bouton rouge]
+WAIT0 --> C0{BOUTONROUGE == 1}
 
-%% Branche CONFIGURATION : Redirection vers le mode opérationnel après exécution
-C0 -- Oui --> R0[Réinitialiser BOUTONROUGE = 0]
+C0 -- Oui --> R0[Reset bouton rouge]
 R0 --> M0[MODE = 0]
-M0 --> VER0[Appel VERIFICATION]
-VER0 --> CONF0[Appel CONFIGURATION]
+M0 --> CONF0[CONFIGURATION]
 CONF0 --> M1_AUTO[MODE = 1]
 
-%% Branche Directe vers Standard
 C0 -- Non --> M1[MODE = 1]
 
+M1 --> LOOP
+M1_AUTO --> LOOP
+
+LOOP{MODE > 0}
+
+LOOP -- Non --> END([Fin])
+LOOP -- Oui --> ASK1[Appuyer bouton rouge]
+
+ASK1 --> WAIT1[Attendre bouton rouge]
+WAIT1 --> C1{BOUTONROUGE == 1 OR MODE == 3}
+
 %% =====================
-%% BOUCLE PRINCIPALE (OPERATIOUNELLE)
+%% MAINTENANCE MODE 3
 %% =====================
 
-M1 --> WHILE{{Tant que MODE > 0}}
-M1_AUTO --> WHILE
-
-WHILE -- Faux --> END([Fin])
-WHILE -- Vrai --> ASK1[Afficher : Appuyer bouton rouge ?]
-
-ASK1 --> WAIT1[Attendre saisie bouton rouge]
-WAIT1 --> C1{BOUTONROUGE == 1<br/>ou MODE == 3 ?}
-
-%% ---- Branche MAINTENANCE 1
 C1 -- Oui --> M3[MODE = 3]
-M3 --> MAINT1[Appel MAINTENANCE]
-MAINT1 --> JOIN1(( ))
-JOIN1 --> VER1[Appel VERIFICATION]
-VER1 --> WHILE
+M3 --> MAINT1[MAINTENANCE]
 
-%% ---- Branche STANDARD / ECONOMIE
-C1 -- Non --> ASK2[Afficher : Appuyer bouton vert ?]
-ASK2 --> WAIT2[Attendre saisie bouton vert]
-WAIT2 --> C2{BOUTONVERT == 1<br/>ou MODE == 2 ?}
+MAINT1 --> RET3{BOUTONROUGE == 1}
 
-%% ---- Mode STANDARD
-C2 -- Faux --> STD[Appel STANDARD]
-STD --> JOIN2(( ))
-JOIN2 --> VER2[Appel VERIFICATION]
-VER2 --> WHILE
+RET3 -- Oui --> BACK1[MODE = 1]
+RET3 -- Non --> VER1[VERIFICATION]
 
-%% ---- Mode ECONOMIE ou MAINTENANCE 4
-C2 -- Vrai --> ASK3[Afficher : Appuyer bouton rouge ?]
-ASK3 --> WAIT3[Attendre saisie bouton rouge]
-WAIT3 --> C3{BOUTONROUGE == 1<br/>ou MODE == 4 ?}
+BACK1 --> VER1
+VER1 --> LOOP
 
-%% Sous-branche Économie
-C3 -- Faux --> M2[MODE = 2]
-M2 --> ECO[Appel ECONOMIE]
-ECO --> JOIN3(( ))
+%% =====================
+%% STANDARD / ECONOMIE
+%% =====================
 
-%% Sous-branche Maintenance via Mode Éco
-C3 -- Vrai --> M4[MODE = 4]
-M4 --> MAINT2[Appel MAINTENANCE]
-MAINT2 --> JOIN3
+C1 -- Non --> ASK2[Appuyer bouton vert]
+ASK2 --> WAIT2[Attendre bouton vert]
+WAIT2 --> C2{BOUTONVERT == 1 OR MODE == 2}
 
-%% Retour commun vers la vérification cyclique
-JOIN3 --> VER3[Appel VERIFICATION]
-VER3 --> WHILE
+%% =====================
+%% STANDARD
+%% =====================
+
+C2 -- Non --> STD[STANDARD]
+STD --> VER2[VERIFICATION]
+VER2 --> LOOP
+
+%% =====================
+%% ECONOMIE / MAINTENANCE 4
+%% =====================
+
+C2 -- Oui --> ASK3[Appuyer bouton rouge]
+ASK3 --> WAIT3[Attendre bouton rouge]
+WAIT3 --> C3{BOUTONROUGE == 1 OR MODE == 4}
+
+%% ---- ECONOMIE
+C3 -- Non --> M2[MODE = 2]
+M2 --> ECO[ECONOMIE]
+
+%% AJOUT : retour Standard si bouton vert en mode 2
+ECO --> RET_ECO{BOUTONVERT == 1}
+
+RET_ECO -- Oui --> BACK_STD[MODE = 1]
+RET_ECO -- Non --> VER3[VERIFICATION]
+
+BACK_STD --> VER3
+VER3 --> LOOP
+
+%% =====================
+%% MAINTENANCE MODE 4
+%% =====================
+
+C3 -- Oui --> M4[MODE = 4]
+M4 --> MAINT2[MAINTENANCE]
+
+MAINT2 --> RET4{BOUTONROUGE == 1}
+
+RET4 -- Oui --> BACK2[MODE = 2]
+RET4 -- Non --> VER4[VERIFICATION]
+
+BACK2 --> VER4
+VER4 --> LOOP
+
 ```
 
 ## Standart
@@ -305,87 +327,91 @@ flowchart TD
 START([VERIFICATION])
 
 %% =====================
+%% Initialisation durée LED
+%% =====================
+
+START --> D0[dureeLED = 1]
+
+%% =====================
 %% Initialisation flags
 %% =====================
 
-START --> A1[Booleen AccesHorlogeRTC]
+D0 --> A1[Booleen AccesHorlogeRTC]
 A1 --> A2[Booleen DonneesCoherentes]
 A2 --> A3[Booleen StockagePlein]
 A3 --> A4[Booleen AccesCarteSD]
 A4 --> A5[Booleen Erreur]
 
-A5 --> SETERR[Erreur 1]
+A5 --> SETERR[Erreur = 1]
 
 %% =====================
 %% Debut verification
 %% =====================
 
-SETERR --> C0{Erreur 1}
+SETERR --> C0{Erreur == 1}
 
 C0 -- Faux --> END([Fin])
 
-C0 -- Vrai --> RTC[HorlogeRTC]
-
-RTC --> C1{AccesHorlogeRTC 1}
-
-C1 -- Faux --> LED1[LedRougeBleu]
-C1 -- Vrai --> C2{GPSINSTANT different NA}
+C0 -- Vrai --> C1{AccesHorlogeRTC == 1}
 
 %% =====================
 %% GPS
 %% =====================
 
-C2 -- Faux --> LED2[LedRougeJaune]
-C2 -- Vrai --> C3{LUMININSTANT different NA}
+C1 -- Faux --> LED1[Led = dureeLED* rouge and dureeLED* bleu]
+C1 -- Vrai --> C2{GPSINSTANT != NA}
+
+C2 -- Faux --> LED2[Led = dureeLED* rouge and dureeLED* jaune]
+C2 -- Vrai --> C3{LUMININSTANT != NA}
 
 %% =====================
 %% LUMIN
 %% =====================
 
-C3 -- Faux --> LED3[LedRougeVerte]
-C3 -- Vrai --> C4{TEMPAIRINSTANT different NA}
+C3 -- Faux --> LED3[Led = dureeLED* rouge and dureeLED* vert]
+C3 -- Vrai --> C4{TEMPAIRINSTANT != NA}
 
 %% =====================
 %% TEMPAIR
 %% =====================
 
-C4 -- Faux --> LED4[LedRougeVerte]
-C4 -- Vrai --> C5{HYGRINSTANT different NA}
+C4 -- Faux --> LED4[Led = dureeLED* rouge and dureeLED* vert]
+C4 -- Vrai --> C5{HYGRINSTANT != NA}
 
 %% =====================
 %% HYGR
 %% =====================
 
-C5 -- Faux --> LED5[LedRougeVerte]
-C5 -- Vrai --> C6{PRESSUREINSTANT different NA}
+C5 -- Faux --> LED5[Led = dureeLED* rouge and dureeLED* vert]
+C5 -- Vrai --> C6{PRESSUREINSTANT != NA}
 
 %% =====================
 %% PRESSURE
 %% =====================
 
-C6 -- Faux --> LED6[LedRougeVerte]
+C6 -- Faux --> LED6[Led = dureeLED* rouge and dureeLED* vert]
 C6 -- Vrai --> INCOH[IncoherencesDATA]
 
 %% =====================
 %% Cohérence données
 %% =====================
 
-INCOH --> C7{DonneesCoherentes 1}
+INCOH --> C7{DonneesCoherentes == 1}
 
-C7 -- Faux --> LED7[LedRougeVerteDiv2]
+C7 -- Faux --> LED7[Led = dureeLED* rouge and 2*dureeLED * vert]
 C7 -- Vrai --> SD[CarteSD]
 
 %% =====================
 %% Carte SD
 %% =====================
 
-SD --> C8{StockagePlein 0}
+SD --> C8{StockagePlein == 0}
 
-C8 -- Faux --> LED8[LedRougeBlanche]
-C8 -- Vrai --> C9{AccesCarteSD 1}
+C8 -- Faux --> LED8[Led = dureeLED* rouge and dureeLED* blanc]
+C8 -- Vrai --> C9{AccesCarteSD == 1}
 
-C9 -- Faux --> LED9[LedRougeBlancheDiv2]
-C9 -- Vrai --> OK[Erreur 0]
+C9 -- Faux --> LED9[Led = dureeLED* rouge and 2*dureeLED * blanc]
+C9 -- Vrai --> OK[Erreur = 0]
 
 %% =====================
 %% Fin
@@ -401,6 +427,7 @@ LED7 --> END
 LED8 --> END
 LED9 --> END
 OK --> END
+
 ```
 
 ## Mode configuration à refaire, nous devons revoir l'ensemble de l'architecture.
