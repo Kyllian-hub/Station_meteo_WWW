@@ -1,1 +1,314 @@
+/* =======================================================
+   STATION METEO – VERSION ARDUINO UNO
+   Machine à états complète
+   ======================================================= */
 
+/* ================== PINS ================== */
+
+#define PIN_BOUTON_ROUGE 2
+#define PIN_BOUTON_VERT  3
+
+#define LED_VERTE   4
+#define LED_ROUGE   5
+#define LED_BLEUE   6
+#define LED_JAUNE   7
+#define LED_BLANCHE 8
+
+/* ================== MODES ================== */
+
+enum Mode {
+  CONFIGURATION = 0,
+  STANDARD = 1,
+  ECONOMIE = 2,
+  MAINTENANCE3 = 3,
+  MAINTENANCE4 = 4
+};
+
+Mode mode = STANDARD;
+
+/* ================== VARIABLES ================== */
+
+unsigned long logInterval = 600000;      // 600 s
+unsigned long timeoutCapteur = 30000;   // 30 s
+unsigned long previousLogTime = 0;
+
+bool GPSINSTANT = true;
+bool LUMININSTANT = true;
+bool PRESSUREINSTANT = true;
+bool HYGRINSTANT = true;
+bool TEMPAIRINSTANT = true;
+
+bool AccesHorlogeRTC = true;
+bool DonneesCoherentes = true;
+bool StockagePlein = false;
+bool AccesCarteSD = true;
+
+/* =======================================================
+   SETUP
+   ======================================================= */
+
+void setup() {
+
+  pinMode(PIN_BOUTON_ROUGE, INPUT_PULLUP);
+  pinMode(PIN_BOUTON_VERT, INPUT_PULLUP);
+
+  pinMode(LED_VERTE, OUTPUT);
+  pinMode(LED_ROUGE, OUTPUT);
+  pinMode(LED_BLEUE, OUTPUT);
+  pinMode(LED_JAUNE, OUTPUT);
+  pinMode(LED_BLANCHE, OUTPUT);
+
+  Serial.begin(9600);
+
+  Serial.println("Systeme demarre");
+}
+
+/* =======================================================
+   LOOP PRINCIPALE
+   ======================================================= */
+
+void loop() {
+
+  bool boutonRouge = !digitalRead(PIN_BOUTON_ROUGE);
+  bool boutonVert  = !digitalRead(PIN_BOUTON_VERT);
+
+  switch (mode) {
+
+    case STANDARD:
+      if (boutonRouge) mode = MAINTENANCE3;
+      else if (boutonVert) mode = ECONOMIE;
+      else standardMode();
+      break;
+
+    case ECONOMIE:
+      if (boutonRouge) mode = MAINTENANCE4;
+      else if (boutonVert) mode = STANDARD;
+      else economieMode();
+      break;
+
+    case MAINTENANCE3:
+      maintenanceMode();
+      if (boutonRouge) mode = STANDARD;
+      break;
+
+    case MAINTENANCE4:
+      maintenanceMode();
+      if (boutonRouge) mode = ECONOMIE;
+      break;
+
+    case CONFIGURATION:
+      configurationMode();
+      break;
+  }
+}
+
+/* =======================================================
+   MODE STANDARD
+   ======================================================= */
+
+void standardMode() {
+
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousLogTime >= logInterval) {
+
+    previousLogTime = currentMillis;
+
+    digitalWrite(LED_VERTE, HIGH);
+
+    lireCapteurs();
+    enregistrerDonnees();
+
+    verificationSysteme();
+
+    digitalWrite(LED_VERTE, LOW);
+  }
+}
+
+/* =======================================================
+   MODE ECONOMIE
+   ======================================================= */
+
+void economieMode() {
+
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousLogTime >= (logInterval * 2)) {
+
+    previousLogTime = currentMillis;
+
+    digitalWrite(LED_VERTE, HIGH);
+
+    lireCapteurs();
+    enregistrerDonnees();
+
+    verificationSysteme();
+
+    digitalWrite(LED_VERTE, LOW);
+  }
+}
+
+/* =======================================================
+   MODE MAINTENANCE
+   ======================================================= */
+
+void maintenanceMode() {
+
+  digitalWrite(LED_JAUNE, HIGH);
+
+  Serial.println("Mode maintenance actif");
+
+  lireCapteurs();
+  afficherDonnees();
+
+  digitalWrite(LED_JAUNE, LOW);
+}
+
+/* =======================================================
+   MODE CONFIGURATION (UART)
+   ======================================================= */
+
+void configurationMode() {
+
+  static unsigned long lastActivity = millis();
+
+  if (Serial.available()) {
+
+    char cmd = Serial.read();
+    lastActivity = millis();
+
+    switch (cmd) {
+
+      case 'L':
+        logInterval = 300000;
+        Serial.println("Intervalle modifie");
+        break;
+
+      case 'F':
+        Serial.println("Taille fichier modifiee");
+        break;
+
+      case 'R':
+        resetParametres();
+        break;
+
+      case 'V':
+        Serial.println("Version 1.0 - Lot A");
+        break;
+
+      case 'T':
+        timeoutCapteur = 20000;
+        Serial.println("Timeout modifie");
+        break;
+
+      case 'Q':
+        mode = STANDARD;
+        Serial.println("Sortie configuration");
+        break;
+    }
+  }
+
+  // Sortie auto après 30 min
+  if (millis() - lastActivity > 1800000) {
+    mode = STANDARD;
+  }
+}
+
+/* =======================================================
+   LECTURE CAPTEURS (simulation)
+   ======================================================= */
+
+void lireCapteurs() {
+
+  Serial.println("Lecture GPS...");
+  Serial.println("Lecture Luminosite...");
+  Serial.println("Lecture Pression...");
+  Serial.println("Lecture Hygrometrie...");
+  Serial.println("Lecture Temperature...");
+}
+
+/* =======================================================
+   ENREGISTREMENT DONNEES
+   ======================================================= */
+
+void enregistrerDonnees() {
+
+  if (StockagePlein) {
+    Serial.println("Carte SD pleine !");
+  } else {
+    Serial.println("Donnees enregistrees");
+  }
+}
+
+/* =======================================================
+   AFFICHAGE MAINTENANCE
+   ======================================================= */
+
+void afficherDonnees() {
+
+  Serial.println("Affichage des mesures...");
+}
+
+/* =======================================================
+   VERIFICATION SYSTEME
+   ======================================================= */
+
+void verificationSysteme() {
+
+  eteindreToutesLED();
+
+  if (!AccesHorlogeRTC) {
+    digitalWrite(LED_ROUGE, HIGH);
+    digitalWrite(LED_BLEUE, HIGH);
+    return;
+  }
+
+  if (!GPSINSTANT || !LUMININSTANT || !TEMPAIRINSTANT ||
+      !HYGRINSTANT || !PRESSUREINSTANT) {
+
+    digitalWrite(LED_ROUGE, HIGH);
+    digitalWrite(LED_JAUNE, HIGH);
+    return;
+  }
+
+  if (!DonneesCoherentes) {
+    digitalWrite(LED_ROUGE, HIGH);
+    digitalWrite(LED_VERTE, HIGH);
+    return;
+  }
+
+  if (StockagePlein) {
+    digitalWrite(LED_ROUGE, HIGH);
+    digitalWrite(LED_BLANCHE, HIGH);
+    return;
+  }
+
+  if (!AccesCarteSD) {
+    digitalWrite(LED_ROUGE, HIGH);
+    digitalWrite(LED_BLANCHE, HIGH);
+    delay(200);
+    digitalWrite(LED_BLANCHE, LOW);
+    return;
+  }
+}
+
+/* =======================================================
+   OUTILS
+   ======================================================= */
+
+void eteindreToutesLED() {
+
+  digitalWrite(LED_VERTE, LOW);
+  digitalWrite(LED_ROUGE, LOW);
+  digitalWrite(LED_BLEUE, LOW);
+  digitalWrite(LED_JAUNE, LOW);
+  digitalWrite(LED_BLANCHE, LOW);
+}
+
+void resetParametres() {
+
+  logInterval = 600000;
+  timeoutCapteur = 30000;
+
+  Serial.println("Parametres reinitialises");
+}
