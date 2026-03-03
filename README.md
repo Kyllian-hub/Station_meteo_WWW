@@ -95,7 +95,7 @@ VER4 --> LOOP
 
 ```
 
-## Standart (fini)
+## Standard (fini)
 ```mermaid
 flowchart TD
 
@@ -234,7 +234,7 @@ O5 --> END
 P5 --> END
 ```
 
-## Economique (fini)
+## Economie (fini)
 ```mermaid
 
 flowchart TD
