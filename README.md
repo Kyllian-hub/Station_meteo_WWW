@@ -221,6 +221,106 @@ flowchart TD
 
 ---
 
+#Mode standard
+
+```mermaid 
+flowchart TD
+    A([Entrée en mode standard LED verte continue])
+    A --> B[Attente de l'intervalle entre 2 mesures 10 minutes par défaut]
+    B --> C[Acquisition de la température de l'air\net de l'hygrométrie]
+    C --> D[Acquisition de la luminosité]
+    D --> E[Acquisition des données GPS vitesse · altitude · position]
+    E --> F{Capteur sans réponse après le délai d'abandon ?}
+    F -->|Oui| G[Donnée enregistrée comme non disponible]
+    F -->|Non| H
+    G --> H[Enregistrement horodaté de toutes les mesures sur la carte SD]
+    H --> I{Fichier plein ?}
+    I -->|Non| B
+    I -->|Oui| J[Archivage du fichier plein création d'un nouveau fichier]
+    J --> B
+
+    B --> K{Bouton vert pressé 5 secondes ?}
+    K -->|Oui| L([Passage en mode économique])
+    B --> M{Bouton rouge pressé 5 secondes ?}
+    M -->|Oui| N([Passage en mode maintenance])
+```
+
+---
+
+#Mode Économie
+
+```mermaid 
+flowchart TD
+    A([Entrée en mode économique LED bleue continue])
+    A --> B[Intervalle entre 2 mesures multiplié par 2]
+    B --> C[Acquisition de la température de l'air et de l'hygrométrie]
+    C --> D[Acquisition de la luminosité]
+    D --> E{Acquisition GPS activée ce tour ?}
+    E -->|Oui — 1 mesure sur 2| F[Acquisition des données GPS vitesse · altitude · position]
+    E -->|Non| G[Données GPS non relevées ce tour enregistrées comme non disponibles]
+    F --> H
+    G --> H[Enregistrement horodaté de toutes les mesures sur la carte SD]
+    H --> I{Fichier plein ?}
+    I -->|Non| B
+    I -->|Oui| J[Archivage du fichier plein création d'un nouveau fichier]
+    J --> B
+
+    B --> K{Bouton rouge pressé 5 secondes ?}
+    K -->|Oui| L([Retour en mode standard])
+    B --> M{Bouton rouge pressé 5 secondes depuis le mode standard ?}
+    M -->|Oui| N([Passage en mode maintenance])
+```
+
+---
+
+#Mode Maintenance
+
+```mermaid 
+flowchart TD
+    A([Entrée en mode maintenance LED orange continue])
+    A --> B[Écriture sur la carte SD suspendue]
+    B --> C[Carte SD retirable en toute sécurité sans risque de corrompre les données]
+    C --> D[Données des capteurs consultables en direct depuis l'interface série]
+    D --> E[Acquisition de la température de l'air de l'hygrométrie et de la luminosité]
+    E --> F{Capteur sans réponse après le délai d'abandon ?}
+    F -->|Oui| G[Donnée signalée comme non disponible]
+    F -->|Non| H
+    G --> H[Affichage des mesures sur l'interface série]
+    H --> I{Bouton rouge pressé 5 secondes ?}
+    I -->|Non| E
+    I -->|Oui| J[Réinitialisation de la carte SD]
+    J --> K([Retour au mode précédent standard ou économique])
+```
+
+---
+
+#Mode Configuration
+
+```mermaid 
+flowchart TD
+    A([Démarrage avec bouton rouge pressé LED jaune continue])
+    A --> B[Acquisition des capteurs désactivée]
+    B --> C[Attente d'une commande depuis la console sur l'interface série]
+    C --> D{Commande reconnue ?}
+    D -->|Non| E[Message d'erreur renvoyé sur l'interface série]
+    E --> C
+    D -->|Oui| F{Type de commande ?}
+    F -->|Réglage de l'horloge CLOCK · DATE · DAY| G[Mise à jour de la date et de l'heure]
+    F -->|Paramètre capteur TEMP · HYGR · LUMIN · PRESSURE| H[Mise à jour du paramètre du capteur concerné]
+    F -->|Paramètre système LOG_INTERVAL · FILE_MAX_SIZE · TIMEOUT| I[Mise à jour du paramètre système]
+    F -->|RESET| J[Réinitialisation de tous les paramètres aux valeurs par défaut]
+    F -->|VERSION| K[Affichage de la version du programme et du numéro de lot]
+    G --> L[Sauvegarde dans la mémoire interne persistante après redémarrage]
+    H --> L
+    I --> L
+    J --> L
+    K --> C
+    L --> C
+    C --> M{30 minutes\nsans activité ?}
+    M -->|Oui| N([Basculement automatique en mode standard])
+```
+
+---
 ## Licence
 
 Ce projet est à usage éducatif — [CESI École d'Ingénieurs](https://www.cesi.fr).
