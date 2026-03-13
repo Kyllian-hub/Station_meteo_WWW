@@ -175,72 +175,54 @@ Le système écrit toujours dans le fichier de révision `_0`. Quand il atteint 
 
 ```mermaid
 graph TD
-    SETUP([setup]) --> INIT[Initialisation\nGPIO · Serial · I²C\nEEPROM · RTC · DHT\nLCD · SD]
-    INIT --> BOOT{Bouton rouge\nau démarrage ?}
+    SETUP([Démarrage du système]) --> INIT[Initialisation des capteurs\nde l'horloge et de la carte SD]
+    INIT --> BOOT{Bouton rouge\npressé au démarrage ?}
     BOOT -- Oui --> CFG_MODE
     BOOT -- Non --> STD_MODE
 
-    LOOP([loop]) --> LED_TICK[ledErreurTick\nClignotement non bloquant]
-    LED_TICK --> BTN[Vérification boutons\nboutonRouge · boutonVert]
-    BTN --> DISPATCH{modeCourant}
+    LOOP([Boucle principale]) --> LED_TICK[Mise à jour\ndu signal lumineux LED]
+    LED_TICK --> BTN[Lecture des\nboutons poussoirs]
+    BTN --> DISPATCH{Mode actif ?}
 
     DISPATCH -- Standard --> STD_MODE
     DISPATCH -- Économique --> ECO_MODE
     DISPATCH -- Maintenance --> MAINT_MODE
     DISPATCH -- Configuration --> CFG_MODE
 
-    subgraph STD_MODE [Mode Standard]
-        STD[Attente LOG_INTERVAL] --> ACQ
-        ACQ[Acquisition non bloquante\ntickLecture] --> DHT_R[Lire DHT11\ntempérature · humidité]
-        DHT_R --> LUM_R[Lire luminosité\nADC analogique]
-        LUM_R --> GPS_R[Lire GPS\nParser NMEA]
-        GPS_R --> LOG[logSD\nÉcriture CSV horodaté]
-        LOG --> ROT{Fichier plein ?}
-        ROT -- Oui --> ROTATE[Rotation fichier\n_0 → _1, _2 ...]
-        ROTATE --> LOG2[Nouveau _0.LOG]
+    subgraph STD_MODE [Mode Standard — LED verte continue 🟢]
+        STD[Attente de l'intervalle\nentre 2 mesures\n10 minutes par défaut] --> ACQ[Acquisition des données\nde tous les capteurs]
+        ACQ --> T1[Température de l'air\net hygrométrie]
+        T1 --> T2[Luminosité]
+        T2 --> T3[Données GPS\nvitesse · altitude · position]
+        T3 --> TIMEOUT{Capteur sans\nréponse après\nle délai d'abandon ?}
+        TIMEOUT -- Oui --> NA[Donnée enregistrée\ncomme non disponible]
+        TIMEOUT -- Non --> LOG
+        NA --> LOG[Enregistrement horodaté\nde toutes les mesures\nsur une seule ligne dans la carte SD]
+        LOG --> FULL{Fichier\nplein ?}
+        FULL -- Oui --> ARCHIVE[Archivage du fichier plein\ncréation d'un nouveau fichier]
     end
 
-    subgraph ECO_MODE [Mode Économique]
-        ECO[Attente 2×LOG_INTERVAL] --> ACQ2[Acquisition non bloquante]
-        ACQ2 --> GPS_SKIP{1 mesure sur 2 ?}
-        GPS_SKIP -- GPS actif --> ACQ2
-        GPS_SKIP -- GPS inactif --> NO_GPS[GPS ignoré\nlat/lon/alt/vit = NA]
-        NO_GPS --> LOG
+    subgraph ECO_MODE [Mode Économique — LED bleue continue 🔵]
+        ECO[Intervalle entre 2 mesures\nmultiplié par 2] --> ACQ2[Acquisition des données]
+        ACQ2 --> GPS2{Acquisition GPS\nce tour ?}
+        GPS2 -- Oui, 1 mesure sur 2 --> T3
+        GPS2 -- Non --> NOGPS[Données GPS\nnon relevées ce tour]
+        NOGPS --> LOG
     end
 
-    subgraph MAINT_MODE [Mode Maintenance]
-        MAINT_FSM[Machine à états\netatMaint 1→5] --> MAINT_MSG[Affichage\nSD retiree OK]
-        MAINT_MSG --> MAINT_WAIT[Attente capteurs\nlireDHT · lireLumiere]
-        MAINT_WAIT --> LCD_SCROLL[Défilement LCD\n5 pages toutes les 2s]
-        LCD_SCROLL --> EXIT_BTN{Bouton rouge\n5 s ?}
-        EXIT_BTN -- Oui --> REINIT_SD[Réinit SD\nRetour mode précédent]
+    subgraph MAINT_MODE [Mode Maintenance — LED orange continue 🟠]
+        MAINT1[Écriture sur la carte SD\nsuspendue] --> MAINT2[Carte SD retirable\nen toute sécurité\nsans risque de corrompre les données]
+        MAINT2 --> MAINT3[Données des capteurs\nconsultables en direct\ndepuis l'interface série]
+        MAINT3 --> MAINT_EXIT{Bouton rouge\npressé 5 secondes ?}
+        MAINT_EXIT -- Oui --> BACK[Retour au mode précédent\nstandard ou économique]
     end
 
-    subgraph CFG_MODE [Mode Configuration]
-        CFG_LISTEN[Écoute port série\n9600 baud] --> CFG_PARSE[Parser commande\nTable de dispatch]
-        CFG_PARSE --> CFG_EXEC[Exécution\nLecture · Validation · EEPROM]
-        CFG_EXEC --> CFG_TIMEOUT{30 min\nsans activité ?}
-        CFG_TIMEOUT -- Oui --> STD_MODE
+    subgraph CFG_MODE [Mode Configuration — LED jaune continue 🟡]
+        CFG1[Acquisition des capteurs\ndésactivée] --> CFG2[Configuration du système\ndepuis la console\nsur l'interface série]
+        CFG2 --> CFG3[Paramètres sauvegardés\ndans la mémoire interne\npersistants après redémarrage]
+        CFG3 --> CFG_TO{30 minutes\nsans activité ?}
+        CFG_TO -- Oui --> STD_MODE
     end
-
-    subgraph PILOTES [Pilotes matériels]
-        P9813[LED P9813\nSPI logiciel D8·D9]
-        LCD_DRV[LCD 16×2 I²C\n0x3E · 0x62]
-        RTC_DRV[RTC DS1307\nI²C 0x68]
-        SD_DRV[Carte SD\nSPI D10–D13]
-        NMEA_DRV[Parser NMEA\nGPRMC · GPGGA]
-        EEPROM_DRV[EEPROM\nStruct Config]
-    end
-
-    LOG --> SD_DRV
-    GPS_R --> NMEA_DRV
-    DHT_R --> DHT_LIB[DHT sensor library]
-    LCD_SCROLL --> LCD_DRV
-    MAINT_MSG --> LCD_DRV
-    LOG --> RTC_DRV
-    INIT --> EEPROM_DRV
-    CFG_EXEC --> EEPROM_DRV
-    LED_TICK --> P9813
 ```
 
 ---
