@@ -1,6 +1,5 @@
 # Station Météo Embarquée — Arduino Uno
-
-Système embarqué de collecte et d'enregistrement de données environnementales sur Arduino Uno. Il mesure température, humidité, luminosité et position GPS, les enregistre sur carte SD et les affiche sur un écran LCD.
+L'objectif du projet Worldwide Weather Watcher est de concevoir et de réaliser un système embarqué autonome destiné à la collecte, au traitement et à l’enregistrement de données environnementales. Ce dispositif repose sur un microcontrôleur AVR ATmega328, intégré à une carte Arduino, qui assure le pilotage et la coordination de l’ensemble des composants du système. L’objectif est de développer une station de mesure capable d’acquérir différentes données météorologiques à l’aide de capteurs, de les traiter et de les enregistrer de manière fiable pour une exploitation ultérieure.
 
 ---
 
