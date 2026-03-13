@@ -1,505 +1,250 @@
-## MAIN (fini)
-```mermaid
-flowchart TD
-
-START([Debut])
-
-START --> ASK0[Appuyer bouton rouge pour config]
-ASK0 --> WAIT0[Attendre bouton rouge]
-WAIT0 --> C0{BOUTONROUGE == 1}
-
-C0 -- Oui --> R0[Reset bouton rouge]
-R0 --> M0[MODE = 0]
-M0 --> CONF0[CONFIGURATION]
-CONF0 --> M1_AUTO[MODE = 1]
-
-C0 -- Non --> M1[MODE = 1]
-
-M1 --> LOOP
-M1_AUTO --> LOOP
-
-LOOP{MODE > 0}
-
-LOOP -- Non --> END([Fin])
-LOOP -- Oui --> ASK1[Appuyer bouton rouge]
-
-ASK1 --> WAIT1[Attendre bouton rouge]
-WAIT1 --> C1{BOUTONROUGE == 1 OR MODE == 3}
-
-%% =====================
-%% MAINTENANCE MODE 3
-%% =====================
-
-C1 -- Oui --> M3[MODE = 3]
-M3 --> MAINT1[MAINTENANCE]
-
-MAINT1 --> RET3{BOUTONROUGE == 1}
-
-RET3 -- Oui --> BACK1[MODE = 1]
-RET3 -- Non --> VER1[VERIFICATION]
-
-BACK1 --> VER1
-VER1 --> LOOP
-
-%% =====================
-%% STANDARD / ECONOMIE
-%% =====================
-
-C1 -- Non --> ASK2[Appuyer bouton vert]
-ASK2 --> WAIT2[Attendre bouton vert]
-WAIT2 --> C2{BOUTONVERT == 1 OR MODE == 2}
-
-%% =====================
-%% STANDARD
-%% =====================
-
-C2 -- Non --> STD[STANDARD]
-STD --> VER2[VERIFICATION]
-VER2 --> LOOP
-
-%% =====================
-%% ECONOMIE / MAINTENANCE 4
-%% =====================
-
-C2 -- Oui --> ASK3[Appuyer bouton rouge]
-ASK3 --> WAIT3[Attendre bouton rouge]
-WAIT3 --> C3{BOUTONROUGE == 1 OR MODE == 4}
-
-%% ---- ECONOMIE
-C3 -- Non --> M2[MODE = 2]
-M2 --> ECO[ECONOMIE]
-
-%% AJOUT : retour Standard si bouton vert en mode 2
-ECO --> RET_ECO{BOUTONVERT == 1}
-
-RET_ECO -- Oui --> BACK_STD[MODE = 1]
-RET_ECO -- Non --> VER3[VERIFICATION]
-
-BACK_STD --> VER3
-VER3 --> LOOP
-
-%% =====================
-%% MAINTENANCE MODE 4
-%% =====================
-
-C3 -- Oui --> M4[MODE = 4]
-M4 --> MAINT2[MAINTENANCE]
-
-MAINT2 --> RET4{BOUTONROUGE == 1}
-
-RET4 -- Oui --> BACK2[MODE = 2]
-RET4 -- Non --> VER4[VERIFICATION]
-
-BACK2 --> VER4
-VER4 --> LOOP
-
-```
-
-## Standard (fini)
-```mermaid
-flowchart TD
-
-START([STANDARD])
-
-START --> A1[LOGINTERVAL 600]
-A1 --> A2[LEDVERTE = 1]
-A2 --> A3[Entier InstantT]
-A3 --> A4[TIMEOUT = 30]
-A4 --> A5[InstantT = RTC + LOGINTERVAL]
-
-%% =====================
-%% Attente RTC
-%% =====================
-
-A5 --> W1{RTC != InstantT}
-W1 -- Oui --> W1
-W1 -- Non --> B1[InstantT = RTC]
-
-%% =====================
-%% GPS
-%% =====================
-
-B1 --> C1{RTC < InstantT + TIMEOUT and GPSINSTANT = 0 }
-C1 -- Faux --> SAVE1[Mesures enregistrees]
-C1 -- Vrai --> NA1[NA]
-SAVE1 --> D1[InstantT = RTC]
-NA1 --> D1
-
-%% =====================
-%% LUMIN
-%% =====================
-
-D1 --> C2{RTC < InstantT + TIMEOUT and LUMININSTANT = 0}
-C2 -- Faux --> SAVE2[Mesures enregistrees]
-C2 -- Vrai --> NA2[NA]
-SAVE2 --> D2[InstantT = RTC]
-NA2 --> D2
-
-%% =====================
-%% PRESSURE
-%% =====================
-
-D2 --> C3{RTC < InstantT + TIMEOUT and PRESSUREINSTANT = 0 }
-C3 -- Faux --> SAVE3[Mesures enregistrees]
-C3 -- Vrai --> NA3[NA]
-SAVE3 --> D3[InstantT = RTC]
-NA3 --> D3
-
-%% =====================
-%% HYGR
-%% =====================
-
-D3 --> C4{RTC < InstantT + TIMEOUT and HYGRINSTANT = 0}
-C4 -- Faux --> SAVE4[Mesures enregistrees]
-C4 -- Vrai --> NA4[NA]
-SAVE4 --> D4[InstantT = RTC]
-NA4 --> D4
-
-%% =====================
-%% TEMPAIR
-%% =====================
-
-D4 --> C5{RTC < InstantT + TIMEOUT and TEMPAIRINSTANT = 0 }
-C5 -- Faux --> SAVE5[Mesures enregistrees]
-C5 -- Vrai --> NA5[NA]
-
-SAVE5 --> FS
-NA5 --> FS
-
-%% =====================
-%% FILE SIZE
-%% =====================
-
-FS{FILEMAXSIZE < 2000}
-
-FS -- Faux --> COPY[Creer copie fichier revision adaptee\nRecommencer en revision 0\nEnregistrer donnees et date]
-
-FS -- Vrai --> WRITE[Enregistrer donnees et date]
-
-COPY --> END([Fin])
-WRITE --> END
-```
-
-## Maintenance (fini)
-```mermaid
-flowchart TD
-
-A([MAINTENANCE]) --> B[LEDOrange  = 1]
-B --> C[LOGINTERVAL 600]
-C --> D[Entrer InstantT]
-D --> E[TIMEOUT 30]
-E --> F[InstantT = RTC + LOGINTERVAL]
-F --> G[Booleen CarteSDretiree]
-G --> H[Afficher Voulez-vous retirer la carte SD ?]
-H --> I[Attendre saisie CarteSDretiree]
-
-I --> J{CarteSDretiree VRAI}
-
-J -- Oui --> K[Autoriser changement carte SD]
-K --> END([Fin])
-
-J -- Non --> L{RTC != InstantT}
-L -- Oui --> L
-L -- Non --> M[InstantT = RTC]
-
-M --> N1{RTC < InstantT + TIMEOUT and GPSINSTANT = 0}
-N1 -- Non --> O1[AfficherDonnees]
-N1 -- Oui --> P1[NA]
-O1 --> Q1[InstantT = RTC]
-P1 --> Q1
-
-Q1 --> N2{RTC < InstantT + TIMEOUT and LUMININSTANT = 0 }
-N2 -- Non --> O2[AfficherDonnees]
-N2 -- Oui --> P2[NA]
-O2 --> Q2[InstantT = RTC]
-P2 --> Q2
-
-Q2 --> N3{RTC < InstantT + TIMEOUT and PRESSUREINSTANT = 0 }
-N3 -- Non --> O3[AfficherDonnees]
-N3 -- Oui --> P3[NA]
-O3 --> Q3[InstantT = RTC]
-P3 --> Q3
-
-Q3 --> N4{RTC < InstantT + TIMEOUT and HYGRINSTANT = 0 }
-N4 -- Non --> O4[AfficherDonnees]
-N4 -- Oui --> P4[NA]
-O4 --> Q4[InstantT = RTC]
-P4 --> Q4
-
-Q4 --> N5{RTC inferieur InstantT + TIMEOUT and TEMPAIRINSTANT = 0}
-N5 -- Non --> O5[AfficherDonnees]
-N5 -- Oui --> P5[NA]
-
-O5 --> END
-P5 --> END
-```
-
-## Economie (fini)
-```mermaid
-
-flowchart TD
-
-START([ECONOMIQUE])
-
-START --> A1[LOGINTERVAL 600]
-A1 --> A2[LEDVERTE = 1]
-A2 --> A3[Entier InstantT]
-A3 --> A4[TIMEOUT = 30]
-A4 --> A5[InstantT = RTC + LOGINTERVAL*2]
-
-%% =====================
-%% Attente RTC
-%% =====================
-
-A5 --> W1{RTC != InstantT}
-W1 -- Oui --> W1
-W1 -- Non --> B1[InstantT = RTC]
-
-%% =====================
-%% GPS
-%% =====================
-
-B1 --> C1{RTC < InstantT + TIMEOUT and GPSINSTANT = 0 }
-C1 -- Faux --> SAVE1[Mesures enregistrees]
-C1 -- Vrai --> NA1[NA]
-SAVE1 --> D1[InstantT = RTC]
-NA1 --> D1
-
-%% =====================
-%% LUMIN
-%% =====================
-
-D1 --> C2{RTC < InstantT + TIMEOUT and LUMININSTANT = 0}
-C2 -- Faux --> SAVE2[Mesures enregistrees]
-C2 -- Vrai --> NA2[NA]
-SAVE2 --> D2[InstantT = RTC]
-NA2 --> D2
-
-%% =====================
-%% PRESSURE
-%% =====================
-
-D2 --> C3{RTC < InstantT + TIMEOUT and PRESSUREINSTANT = 0 }
-C3 -- Faux --> SAVE3[Mesures enregistrees]
-C3 -- Vrai --> NA3[NA]
-SAVE3 --> D3[InstantT = RTC]
-NA3 --> D3
-
-%% =====================
-%% HYGR
-%% =====================
-
-D3 --> C4{RTC < InstantT + TIMEOUT and HYGRINSTANT = 0}
-C4 -- Faux --> SAVE4[Mesures enregistrees]
-C4 -- Vrai --> NA4[NA]
-SAVE4 --> D4[InstantT = RTC]
-NA4 --> D4
-
-%% =====================
-%% TEMPAIR
-%% =====================
-
-D4 --> C5{RTC < InstantT + TIMEOUT and TEMPAIRINSTANT = 0 }
-C5 -- Faux --> SAVE5[Mesures enregistrees]
-C5 -- Vrai --> NA5[NA]
-
-SAVE5 --> FS
-NA5 --> FS
-
-%% =====================
-%% FILE SIZE
-%% =====================
-
-FS{FILEMAXSIZE < 2000}
-
-FS -- Faux --> COPY[Creer copie fichier revision adaptee\nRecommencer en revision 0\nEnregistrer donnees et date]
-
-FS -- Vrai --> WRITE[Enregistrer donnees et date]
-
-COPY --> END([Fin])
-WRITE --> END
-```
-
-## Verification (fini)
-```mermaid
-flowchart TD
-
-START([VERIFICATION])
-
-%% =====================
-%% Initialisation durée LED
-%% =====================
-
-START --> D0[dureeLED = 1]
-
-%% =====================
-%% Initialisation flags
-%% =====================
-
-D0 --> A1[Booleen AccesHorlogeRTC]
-A1 --> A2[Booleen DonneesCoherentes]
-A2 --> A3[Booleen StockagePlein]
-A3 --> A4[Booleen AccesCarteSD]
-A4 --> A5[Booleen Erreur]
-
-A5 --> SETERR[Erreur = 1]
-
-%% =====================
-%% Debut verification
-%% =====================
-
-SETERR --> C0{Erreur == 1}
-
-C0 -- Faux --> END([Fin])
-
-C0 -- Vrai --> C1{AccesHorlogeRTC == 1}
-
-%% =====================
-%% GPS
-%% =====================
-
-C1 -- Faux --> LED1[Led = dureeLED* rouge and dureeLED* bleu]
-C1 -- Vrai --> C2{GPSINSTANT != NA}
-
-C2 -- Faux --> LED2[Led = dureeLED* rouge and dureeLED* jaune]
-C2 -- Vrai --> C3{LUMININSTANT != NA}
-
-%% =====================
-%% LUMIN
-%% =====================
-
-C3 -- Faux --> LED3[Led = dureeLED* rouge and dureeLED* vert]
-C3 -- Vrai --> C4{TEMPAIRINSTANT != NA}
-
-%% =====================
-%% TEMPAIR
-%% =====================
-
-C4 -- Faux --> LED4[Led = dureeLED* rouge and dureeLED* vert]
-C4 -- Vrai --> C5{HYGRINSTANT != NA}
-
-%% =====================
-%% HYGR
-%% =====================
-
-C5 -- Faux --> LED5[Led = dureeLED* rouge and dureeLED* vert]
-C5 -- Vrai --> C6{PRESSUREINSTANT != NA}
-
-%% =====================
-%% PRESSURE
-%% =====================
-
-C6 -- Faux --> LED6[Led = dureeLED* rouge and dureeLED* vert]
-C6 -- Vrai --> INCOH[IncoherencesDATA]
-
-%% =====================
-%% Cohérence données
-%% =====================
-
-INCOH --> C7{DonneesCoherentes == 1}
-
-C7 -- Faux --> LED7[Led = dureeLED* rouge and 2*dureeLED * vert]
-C7 -- Vrai --> SD[CarteSD]
-
-%% =====================
-%% Carte SD
-%% =====================
-
-SD --> C8{StockagePlein == 0}
-
-C8 -- Faux --> LED8[Led = dureeLED* rouge and dureeLED* blanc]
-C8 -- Vrai --> C9{AccesCarteSD == 1}
-
-C9 -- Faux --> LED9[Led = dureeLED* rouge and 2*dureeLED * blanc]
-C9 -- Vrai --> OK[Erreur = 0]
-
-%% =====================
-%% Fin
-%% =====================
-
-LED1 --> END
-LED2 --> END
-LED3 --> END
-LED4 --> END
-LED5 --> END
-LED6 --> END
-LED7 --> END
-LED8 --> END
-LED9 --> END
-OK --> END
-
-```
-## Mode configuration (fini)
+# Station Météo Embarquée — Arduino Uno
+
+Système embarqué de collecte et d'enregistrement de données environnementales sur Arduino Uno. Il mesure température, humidité, luminosité et position GPS, les enregistre sur carte SD et les affiche sur un écran LCD.
+
+---
+
+## Table des matières
+
+- [Fonctionnalités](#-fonctionnalités)
+- [Matériel requis](#-matériel-requis)
+- [Schéma de câblage](#-schéma-de-câblage)
+- [Bibliothèques requises](#-bibliothèques-requises)
+- [Modes de fonctionnement](#-modes-de-fonctionnement)
+- [Signaux LED](#-signaux-led)
+- [Format des données SD](#-format-des-données-sd)
+- [Architecture du code](#-architecture-du-code)
+- [Installation](#-installation)
+
+---
+
+## Fonctionnalités
+
+- Acquisition de données : température, humidité (DHT11), luminosité (analogique), GPS (NMEA)
+- Enregistrement horodaté sur carte SD (CSV, rotation automatique des fichiers)
+- Affichage LCD I²C avec défilement de 5 pages de données
+- Horloge RTC DS1307 pour l'horodatage
+- LED RGB P9813 avec codes couleur par mode et signalisation d'erreurs
+- Paramètres configurables et persistés en EEPROM
+- 4 modes de fonctionnement accessibles par boutons
+
+---
+
+## Matériel requis
+
+| Composant | Modèle / Référence | Quantité |
+|---|---|---|
+| Microcontrôleur | Arduino Uno (ATmega328P) | 1 |
+| Capteur Temp/Humidité | DHT11 | 1 |
+| Capteur de luminosité | Photorésistance / LDR sur A0 | 1 |
+| Module GPS | UART NMEA (ex. NEO-6M) | 1 |
+| Horloge temps réel | DS1307 (I²C) | 1 |
+| Écran LCD | LCD 16×2 I²C (adresse 0x3E + RGB 0x62) | 1 |
+| LED RGB | P9813 (Grove Chainable LED) | 1 |
+| Carte SD | Module SPI (CS sur pin 10) | 1 |
+| Bouton poussoir | Normalement ouvert | 2 |
+
+---
+
+## Schéma de câblage
+
+| Pin Arduino | Composant | Signal |
+|---|---|---|
+| D2 | Bouton vert | Entrée (INPUT_PULLUP) |
+| D3 | Bouton rouge | Entrée (INPUT_PULLUP) |
+| D4 | DHT11 | Data |
+| D8 | LED P9813 | CLK |
+| D9 | LED P9813 | DATA |
+| D10 | Module SD | CS (SPI) |
+| D11 | Module SD | MOSI (SPI) |
+| D12 | Module SD | MISO (SPI) |
+| D13 | Module SD | SCK (SPI) |
+| A0 | Photorésistance | Analogique |
+| A4 — SDA | RTC DS1307 + LCD | I²C Data |
+| A5 — SCL | RTC DS1307 + LCD | I²C Clock |
+| RX (D0) | Module GPS | TX du GPS |
+
+> Le module GPS utilise le port série matériel. Déconnecter le GPS lors du flashage.
+
+---
+
+## Bibliothèques requises
+
+Installer via le Gestionnaire de bibliothèques Arduino IDE (Outils → Gérer les bibliothèques) :
+
+| Bibliothèque | Version testée | Source |
+|---|---|---|
+| DHT sensor library — Adafruit | ≥ 1.4.7 | [GitHub](https://github.com/adafruit/DHT-sensor-library) |
+| Adafruit Unified Sensor | ≥ 1.1.15 | [GitHub](https://github.com/adafruit/Adafruit_Sensor) |
+| SD | incluse Arduino IDE | — |
+| SPI | incluse Arduino IDE | — |
+| Wire | incluse Arduino IDE | — |
+| EEPROM | incluse Arduino IDE | — |
+
+> Le LCD, le RTC et le GPS sont pilotés **sans bibliothèque externe** afin de minimiser l'empreinte mémoire.
+
+---
+
+## Modes de fonctionnement
+
+### Mode Standard — LED verte 
+Démarrage normal. Acquisition complète (DHT11, luminosité, GPS) à intervalle régulier (10 minutes par défaut). Toutes les mesures sont enregistrées sur la carte SD.
+
+### Mode Économique — LED bleue 
+Accessible depuis le mode standard en **maintenant le bouton vert 5 secondes**.
+- L'intervalle entre mesures est **multiplié par 2**
+- Le GPS n'est sollicité **qu'une mesure sur deux**
+- Retour au mode standard : maintenir le **bouton rouge 5 secondes**
+
+### Mode Maintenance — LED orange 
+Accessible depuis le mode standard ou économique en **maintenant le bouton rouge 5 secondes**.
+- L'écriture SD est **suspendue** — la carte peut être retirée et remplacée sans risque de corruption
+- Les données des capteurs sont affichées en direct sur le LCD (défilement automatique toutes les 2 secondes)
+- Retour au mode précédent : maintenir le **bouton rouge 5 secondes**
+
+### Mode Configuration — LED jaune 
+Activé au **démarrage** en maintenant le bouton rouge enfoncé.
+- Interface de commande via le port série à 9600 baud
+- Paramètres enregistrés en EEPROM, persistants après redémarrage
+- Retour automatique en mode standard après **30 minutes** d'inactivité
+
+#### Commandes disponibles
+
+| Commande | Description | Domaine | Défaut |
+|---|---|---|---|
+| `VERSION` | Affiche la version du firmware et le numéro de lot | — | — |
+| `RESET` | Réinitialise tous les paramètres | — | — |
+| `LOG_INTERVAL=` | Intervalle entre mesures (minutes) | 1 – 1440 | 10 |
+| `FILE_MAX_SIZE=` | Taille max d'un fichier log (octets) | 512 – 65535 | 2048 |
+| `TIMEOUT=` | Délai avant abandon d'un capteur (secondes) | 1 – 300 | 30 |
+| `LUMIN=` | Activer / désactiver la luminosité | 0 ou 1 | 1 |
+| `LUMIN_LOW=` | Seuil luminosité "faible" | 0 – 1023 | 255 |
+| `LUMIN_HIGH=` | Seuil luminosité "forte" | 0 – 1023 | 768 |
+| `TEMP_AIR=` | Activer / désactiver la température | 0 ou 1 | 1 |
+| `MIN_TEMP_AIR=` | Seuil bas température (°C) | -40 – 85 | -10 |
+| `MAX_TEMP_AIR=` | Seuil haut température (°C) | -40 – 85 | 60 |
+| `HYGR=` | Activer / désactiver l'hygrométrie | 0 ou 1 | 1 |
+| `HYGR_MINT=` | Température min pour la prise en compte hygro (°C) | -40 – 85 | 0 |
+| `HYGR_MAXT=` | Température max pour la prise en compte hygro (°C) | -40 – 85 | 50 |
+| `PRESSURE=` | Activer / désactiver la pression (réservé) | 0 ou 1 | 1 |
+| `PRESSURE_MIN=` | Seuil bas pression (hPa) | 300 – 1100 | 850 |
+| `PRESSURE_MAX=` | Seuil haut pression (hPa) | 300 – 1100 | 1080 |
+| `CLOCK=HH:MM:SS` | Régler l'heure du RTC | — | — |
+| `DATE=MM,DD,YYYY` | Régler la date du RTC | — | — |
+| `DAY=MON\|TUE\|...` | Régler le jour de la semaine | MON … SUN | — |
+
+---
+
+## Signaux LED
+
+| Couleur / Clignotement | État |
+|---|---|
+| 🟢 Vert continu | Mode standard |
+| 🔵 Bleu continu | Mode économique |
+| 🟡 Jaune continu | Mode configuration |
+| 🟠 Orange continu | Mode maintenance |
+| 🔴↔🔵 Rouge / Bleu 1 Hz égal | Erreur d'accès à l'horloge RTC |
+| 🔴↔🟡 Rouge / Jaune 1 Hz égal | Erreur GPS (timeout) |
+| 🔴↔🟢 Rouge / Vert 1 Hz égal | Erreur capteur (timeout ou données hors limites) |
+| 🔴↔⚪ Rouge / Blanc 1 Hz égal | Carte SD pleine |
+| 🔴↔⚪ Rouge / Blanc — blanc 2× plus long | Erreur d'écriture ou d'accès SD |
+
+---
+
+## Format des données SD
+
+Les fichiers sont nommés selon le format **AAMMJJ_R.LOG** (ex. `250531_0.LOG` pour le 31 mai 2025, révision 0).
+
+Le système écrit toujours dans le fichier de révision `_0`. Quand il atteint `FILE_MAX_SIZE`, ce fichier est archivé avec la prochaine révision disponible (`_1`, `_2`…) et l'écriture repart depuis le début de `_0`.
+
+**En-tête CSV :** `timestamp, hum, temp, lum, lat, lon, alt, vit`
+
+| Colonne | Unité | Remarque |
+|---|---|---|
+| timestamp | YYYY-MM-DD HH:MM:SS | NA si RTC absent |
+| hum | % | Humidité relative |
+| temp | °C | Température air |
+| lum | 0 – 1023 | Valeur brute ADC |
+| lat / lon | degrés décimaux | NA si GPS en timeout |
+| alt | m | Altitude GPS |
+| vit | m/s | Vitesse GPS |
+
+---
+
+## Architecture du code
 
 ```mermaid
-flowchart TD
+graph TD
+    SETUP([setup]) --> INIT[Initialisation\nGPIO · Serial · I²C\nEEPROM · RTC · DHT\nLCD · SD]
+    INIT --> BOOT{Bouton rouge\nau démarrage ?}
+    BOOT -- Oui --> CFG_MODE
+    BOOT -- Non --> STD_MODE
 
-START[Mode Configuration Active]
+    LOOP([loop]) --> LED_TICK[ledErreurTick\nClignotement non bloquant]
+    LED_TICK --> BTN[Vérification boutons\nboutonRouge · boutonVert]
+    BTN --> DISPATCH{modeCourant}
 
-START --> LED1[LED Jaune ON continue]
-LED1 --> ACQ_OFF[Acquisition Capteurs Desactivee]
-ACQ_OFF --> UART[Attente Commandes UART]
+    DISPATCH -- Standard --> STD_MODE
+    DISPATCH -- Économique --> ECO_MODE
+    DISPATCH -- Maintenance --> MAINT_MODE
+    DISPATCH -- Configuration --> CFG_MODE
 
-%% =====================
-%% VERIFICATION INACTIVITE
-%% =====================
+    subgraph STD_MODE [Mode Standard]
+        STD[Attente LOG_INTERVAL] --> ACQ
+        ACQ[Acquisition non bloquante\ntickLecture] --> DHT_R[Lire DHT11\ntempérature · humidité]
+        DHT_R --> LUM_R[Lire luminosité\nADC analogique]
+        LUM_R --> GPS_R[Lire GPS\nParser NMEA]
+        GPS_R --> LOG[logSD\nÉcriture CSV horodaté]
+        LOG --> ROT{Fichier plein ?}
+        ROT -- Oui --> ROTATE[Rotation fichier\n_0 → _1, _2 ...]
+        ROTATE --> LOG2[Nouveau _0.LOG]
+    end
 
-UART --> INACT{30 min sans activite ?}
-INACT -- Oui --> END[Sortie Mode Configuration]
-INACT -- Non --> C1{Commande LOG_INTERVALL ?}
+    subgraph ECO_MODE [Mode Économique]
+        ECO[Attente 2×LOG_INTERVAL] --> ACQ2[Acquisition non bloquante]
+        ACQ2 --> GPS_SKIP{1 mesure sur 2 ?}
+        GPS_SKIP -- GPS actif --> ACQ2
+        GPS_SKIP -- GPS inactif --> NO_GPS[GPS ignoré\nlat/lon/alt/vit = NA]
+        NO_GPS --> LOG
+    end
 
-%% =====================
-%% COMMANDES SYSTEME
-%% =====================
+    subgraph MAINT_MODE [Mode Maintenance]
+        MAINT_FSM[Machine à états\netatMaint 1→5] --> MAINT_MSG[Affichage\nSD retiree OK]
+        MAINT_MSG --> MAINT_WAIT[Attente capteurs\nlireDHT · lireLumiere]
+        MAINT_WAIT --> LCD_SCROLL[Défilement LCD\n5 pages toutes les 2s]
+        LCD_SCROLL --> EXIT_BTN{Bouton rouge\n5 s ?}
+        EXIT_BTN -- Oui --> REINIT_SD[Réinit SD\nRetour mode précédent]
+    end
 
-C1 -- Oui --> LOG[Modifier intervalle mesures]
-C1 -- Non --> C2{Commande FILE_MAX_SIZE ?}
+    subgraph CFG_MODE [Mode Configuration]
+        CFG_LISTEN[Écoute port série\n9600 baud] --> CFG_PARSE[Parser commande\nTable de dispatch]
+        CFG_PARSE --> CFG_EXEC[Exécution\nLecture · Validation · EEPROM]
+        CFG_EXEC --> CFG_TIMEOUT{30 min\nsans activité ?}
+        CFG_TIMEOUT -- Oui --> STD_MODE
+    end
 
-C2 -- Oui --> FILE[Modifier taille max fichier log]
-C2 -- Non --> C3{Commande RESET ?}
+    subgraph PILOTES [Pilotes matériels]
+        P9813[LED P9813\nSPI logiciel D8·D9]
+        LCD_DRV[LCD 16×2 I²C\n0x3E · 0x62]
+        RTC_DRV[RTC DS1307\nI²C 0x68]
+        SD_DRV[Carte SD\nSPI D10–D13]
+        NMEA_DRV[Parser NMEA\nGPRMC · GPGGA]
+        EEPROM_DRV[EEPROM\nStruct Config]
+    end
 
-C3 -- Oui --> RESET[Reinitialisation parametres par defaut]
-C3 -- Non --> C4{Commande VERSION ?}
-
-C4 -- Oui --> VERSION[Afficher version + numero lot]
-C4 -- Non --> C5{Commande TIMEOUT ?}
-
-%% =====================
-%% COMMANDE CAPTEUR (CONFIG SEULEMENT)
-%% =====================
-
-C5 -- Oui --> TIMEOUT[Modifier timeout acquisition]
-TIMEOUT --> UART
-
-C5 -- Non --> C7{Commande CLOCK ?}
-
-%% =====================
-%% CONFIGURATION RTC
-%% =====================
-
-C7 -- Oui --> CLOCK[Configurer heure]
-C7 -- Non --> C8{Commande DATE ?}
-
-C8 -- Oui --> DATE[Configurer date]
-C8 -- Non --> C9{Commande DAY ?}
-
-C9 -- Oui --> DAY[Configurer jour semaine]
-C9 -- Non --> UART
-
-%% =====================
-%% RETOUR MENU
-%% =====================
-
-LOG --> UART
-FILE --> UART
-RESET --> UART
-VERSION --> UART
-CLOCK --> UART
-DATE --> UART
-DAY --> UART
-
+    LOG --> SD_DRV
+    GPS_R --> NMEA_DRV
+    DHT_R --> DHT_LIB[DHT sensor library]
+    LCD_SCROLL --> LCD_DRV
+    MAINT_MSG --> LCD_DRV
+    LOG --> RTC_DRV
+    INIT --> EEPROM_DRV
+    CFG_EXEC --> EEPROM_DRV
+    LED_TICK --> P9813
 ```
 
+---
 
+## Licence
 
-
+Ce projet est à usage éducatif — [CESI École d'Ingénieurs](https://www.cesi.fr).
