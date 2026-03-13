@@ -5,15 +5,15 @@ L'objectif du projet Worldwide Weather Watcher est de concevoir et de réaliser 
 
 ## Table des matières
 
-- [Fonctionnalités](#-fonctionnalités)
-- [Matériel requis](#-matériel-requis)
-- [Schéma de câblage](#-schéma-de-câblage)
-- [Bibliothèques requises](#-bibliothèques-requises)
-- [Modes de fonctionnement](#-modes-de-fonctionnement)
-- [Signaux LED](#-signaux-led)
-- [Format des données SD](#-format-des-données-sd)
-- [Architecture du code](#-architecture-du-code)
-- [Installation](#-installation)
+- [Fonctionnalités](#fonctionnalités)
+- [Matériel requis](#matériel-requis)
+- [Schéma de câblage](#schéma-de-câblage)
+- [Bibliothèques requises](#bibliothèques-requises)
+- [Modes de fonctionnement](#modes-de-fonctionnement)
+- [Signaux LED](#signaux-led)
+- [Format des données SD](#format-des-données-sd)
+- [Architecture du code](#architecture-du-code)
+- [Installation](#installation)
 
 ---
 
