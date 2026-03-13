@@ -139,15 +139,15 @@ Activé au **démarrage** en maintenant le bouton rouge enfoncé.
 
 | Couleur / Clignotement | État |
 |---|---|
-| 🟢 Vert continu | Mode standard |
-| 🔵 Bleu continu | Mode économique |
-| 🟡 Jaune continu | Mode configuration |
-| 🟠 Orange continu | Mode maintenance |
-| 🔴↔🔵 Rouge / Bleu 1 Hz égal | Erreur d'accès à l'horloge RTC |
-| 🔴↔🟡 Rouge / Jaune 1 Hz égal | Erreur GPS (timeout) |
-| 🔴↔🟢 Rouge / Vert 1 Hz égal | Erreur capteur (timeout ou données hors limites) |
-| 🔴↔⚪ Rouge / Blanc 1 Hz égal | Carte SD pleine |
-| 🔴↔⚪ Rouge / Blanc — blanc 2× plus long | Erreur d'écriture ou d'accès SD |
+| Vert continu | Mode standard |
+| Bleu continu | Mode économique |
+| Jaune continu | Mode configuration |
+| Orange continu | Mode maintenance |
+| Rouge / Bleu 1 Hz égal | Erreur d'accès à l'horloge RTC |
+| Rouge / Jaune 1 Hz égal | Erreur GPS (timeout) |
+| Rouge / Vert 1 Hz égal | Erreur capteur (timeout ou données hors limites) |
+| Rouge / Blanc 1 Hz égal | Carte SD pleine |
+| Rouge / Blanc — blanc 2× plus long | Erreur d'écriture ou d'accès SD |
 
 ---
 
@@ -174,55 +174,49 @@ Le système écrit toujours dans le fichier de révision `_0`. Quand il atteint 
 ## Architecture du code
 
 ```mermaid
-graph TD
-    SETUP([Démarrage du système]) --> INIT[Initialisation des capteurs\nde l'horloge et de la carte SD]
-    INIT --> BOOT{Bouton rouge\npressé au démarrage ?}
-    BOOT -- Oui --> CFG_MODE
-    BOOT -- Non --> STD_MODE
+flowchart TD
+    SETUP([Démarrage du système])
+    SETUP --> INIT[Initialisation des capteurs de l'horloge et de la carte SD]
+    INIT --> BOOT{Bouton rouge pressé au démarrage ?}
+    BOOT -->|Oui| CFG1
+    BOOT -->|Non| STD1
 
-    LOOP([Boucle principale]) --> LED_TICK[Mise à jour\ndu signal lumineux LED]
-    LED_TICK --> BTN[Lecture des\nboutons poussoirs]
+    LOOP([Boucle principale])
+    LOOP --> LED[Mise à jour du signal lumineux LED]
+    LED --> BTN[Lecture des boutons poussoirs]
     BTN --> DISPATCH{Mode actif ?}
+    DISPATCH -->|Standard| STD1
+    DISPATCH -->|Économique| ECO1
+    DISPATCH -->|Maintenance| MAINT1
+    DISPATCH -->|Configuration| CFG1
 
-    DISPATCH -- Standard --> STD_MODE
-    DISPATCH -- Économique --> ECO_MODE
-    DISPATCH -- Maintenance --> MAINT_MODE
-    DISPATCH -- Configuration --> CFG_MODE
+    STD1[Attente de l'intervalle entre 2 mesures 10 minutes par défaut]
+    STD1 --> STD2[Acquisition des données : température · hygrométrie · luminosité · GPS]
+    STD2 --> STD3{Capteur sans réponse après le délai d'abandon ?}
+    STD3 -->|Oui| STD4[Donnée enregistrée comme non disponible]
+    STD3 -->|Non| STD5
+    STD4 --> STD5[Enregistrement horodaté de toutes les mesures sur la carte SD]
+    STD5 --> STD6{Fichier plein ?}
+    STD6 -->|Oui| STD7[Archivage du fichier création d'un nouveau]
+    STD6 -->|Non| STD1
 
-    subgraph STD_MODE [Mode Standard — LED verte continue 🟢]
-        STD[Attente de l'intervalle\nentre 2 mesures\n10 minutes par défaut] --> ACQ[Acquisition des données\nde tous les capteurs]
-        ACQ --> T1[Température de l'air\net hygrométrie]
-        T1 --> T2[Luminosité]
-        T2 --> T3[Données GPS\nvitesse · altitude · position]
-        T3 --> TIMEOUT{Capteur sans\nréponse après\nle délai d'abandon ?}
-        TIMEOUT -- Oui --> NA[Donnée enregistrée\ncomme non disponible]
-        TIMEOUT -- Non --> LOG
-        NA --> LOG[Enregistrement horodaté\nde toutes les mesures\nsur une seule ligne dans la carte SD]
-        LOG --> FULL{Fichier\nplein ?}
-        FULL -- Oui --> ARCHIVE[Archivage du fichier plein\ncréation d'un nouveau fichier]
-    end
+    ECO1[Intervalle entre 2 mesures multiplié par 2]
+    ECO1 --> ECO2{Acquisition GPS ce tour ?}
+    ECO2 -->|Oui — 1 mesure sur 2| STD2
+    ECO2 -->|Non| ECO3[GPS ignoré ce tour données non relevées]
+    ECO3 --> STD5
 
-    subgraph ECO_MODE [Mode Économique — LED bleue continue 🔵]
-        ECO[Intervalle entre 2 mesures\nmultiplié par 2] --> ACQ2[Acquisition des données]
-        ACQ2 --> GPS2{Acquisition GPS\nce tour ?}
-        GPS2 -- Oui, 1 mesure sur 2 --> T3
-        GPS2 -- Non --> NOGPS[Données GPS\nnon relevées ce tour]
-        NOGPS --> LOG
-    end
+    MAINT1[Écriture sur la carte SD suspendue]
+    MAINT1 --> MAINT2[Carte SD retirable en toute sécurité sans risque de corrompre les données]
+    MAINT2 --> MAINT3[Données des capteurs consultables en direct depuis l'interface série]
+    MAINT3 --> MAINT4{Bouton rouge pressé 5 secondes ?}
+    MAINT4 -->|Oui| MAINT5[Retour au mode précédent standard ou économique]
 
-    subgraph MAINT_MODE [Mode Maintenance — LED orange continue 🟠]
-        MAINT1[Écriture sur la carte SD\nsuspendue] --> MAINT2[Carte SD retirable\nen toute sécurité\nsans risque de corrompre les données]
-        MAINT2 --> MAINT3[Données des capteurs\nconsultables en direct\ndepuis l'interface série]
-        MAINT3 --> MAINT_EXIT{Bouton rouge\npressé 5 secondes ?}
-        MAINT_EXIT -- Oui --> BACK[Retour au mode précédent\nstandard ou économique]
-    end
-
-    subgraph CFG_MODE [Mode Configuration — LED jaune continue 🟡]
-        CFG1[Acquisition des capteurs\ndésactivée] --> CFG2[Configuration du système\ndepuis la console\nsur l'interface série]
-        CFG2 --> CFG3[Paramètres sauvegardés\ndans la mémoire interne\npersistants après redémarrage]
-        CFG3 --> CFG_TO{30 minutes\nsans activité ?}
-        CFG_TO -- Oui --> STD_MODE
-    end
+    CFG1[Acquisition des capteurs désactivée]
+    CFG1 --> CFG2[Configuration du système depuis la console sur l'interface série]
+    CFG2 --> CFG3[Paramètres sauvegardés dans la mémoire interne persistants après redémarrage]
+    CFG3 --> CFG4{30 minutes sans activité ?}
+    CFG4 -->|Oui| STD1
 ```
 
 ---
