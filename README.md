@@ -323,7 +323,7 @@ flowchart TD
 
 Ce projet de station météo embarquée basé sur Arduino Uno permet de collecter et d'enregistrer différentes données environnementales telles que la température, l'humidité, la luminosité et la position GPS. Grâce à l'utilisation de capteurs, d'un module GPS et d'une carte SD pour le stockage des données, le système offre une solution autonome et fiable pour la surveillance météorologique.
 
-L'architecture du projet a été pensée pour être modulaire et facilement extensible, permettant d'ajouter de nouveaux capteurs ou fonctionnalités selon les besoins. Ce projet constitue ainsi une bonne introduction aux systèmes embarqués, à l'acquisition de données et à l'utilisation de microcontrôleurs dans des applications concrètes.
+Ce projet constitue ainsi une bonne introduction aux systèmes embarqués, à l'acquisition de données et à l'utilisation de microcontrôleurs dans des applications concrètes.
 
 ---
 ## Licence
