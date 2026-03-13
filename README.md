@@ -1,5 +1,5 @@
 # Station Météo Embarquée — Arduino Uno
-L'objectif du projet Worldwide Weather Watcher est de concevoir et de réaliser un système embarqué autonome destiné à la collecte, au traitement et à l’enregistrement de données environnementales. Ce dispositif repose sur un microcontrôleur AVR ATmega328, intégré à une carte Arduino, qui assure le pilotage et la coordination de l’ensemble des composants du système. L’objectif est de développer une station de mesure capable d’acquérir différentes données météorologiques à l’aide de capteurs, de les traiter et de les enregistrer de manière fiable pour une exploitation ultérieure.
+L'objectif du projet Worldwide Weather Watcher est de concevoir et de réaliser un système embarqué autonome destiné à la collecte, au traitement et à l’enregistrement de données environnementales. Ce dispositif repose sur un microcontrôleur AVR ATmega328, intégré à une carte Arduino UNO, qui assure le pilotage et la coordination de l’ensemble des composants du système. L’objectif est de développer une station de mesure capable d’acquérir différentes données météorologiques à l’aide de capteurs, de les traiter et de les enregistrer de manière fiable pour une exploitation ultérieure.
 
 ---
 
@@ -220,7 +220,7 @@ flowchart TD
 
 ---
 
-#Mode standard
+### Mode standard
 
 ```mermaid 
 flowchart TD
@@ -246,7 +246,7 @@ flowchart TD
 
 ---
 
-#Mode Économie
+### Mode Économie
 
 ```mermaid 
 flowchart TD
@@ -272,7 +272,7 @@ flowchart TD
 
 ---
 
-#Mode Maintenance
+### Mode Maintenance
 
 ```mermaid 
 flowchart TD
@@ -293,7 +293,7 @@ flowchart TD
 
 ---
 
-#Mode Configuration
+### Mode Configuration
 
 ```mermaid 
 flowchart TD
